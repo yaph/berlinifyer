@@ -10,6 +10,8 @@ use base "HTML::Parser";
 use CGI qw(-no_xhtml);
 use LWP::Simple;
 
+my $new_query = "http://user.cs.tu-berlin.de/~ramiro/cgi-bin/berlinifyer.cgi?url=";
+
 # Security measurements
 $CGI::POST_MAX=1024*100;  # max 100 KBytes posts
 $CGI::DISABLE_UPLOADS = 1;  # no uploads
@@ -21,18 +23,18 @@ my $q = new CGI;
 my ($url,$base_url,$regex_url) = undef; # must be global to be used in tha package's methods
 if ($q->param()) {
     $url = $q->param('url');
-    unless (($url =~ m|^(http://[\w.\@/~,\?&%\+=-]+)$|i) && (length($url) > 11)) {
-	slowdeath("<b>Der eingegebene URL '$url' wird von diesem Programm nich akzeptiert!</b>");
+    unless (($url =~ m|^(http://[\w.\@/~,\?&%\+=:-]+)$|i) && (length($url) > 11)) {
+	slowdeath("<b>Der eingegebene URL wird von diesem Programm nich akzeptiert!</b>");
     }
     $url = $1; # untainted
     
     # Enable conversion of relative to full urls
-    if ($url =~ m{^(.*/)\w+\.\w+\s*$}) {
+    if ($url =~ m{^(.*/)\w+\.\w+\s*$}) { # e.g. (.*/)index.html
 	$base_url = $1;
     } elsif ($url =~ m{^(http://.*?)/?\s*$}) {
 	$base_url = $1.'/'; # append / after hostname
     } else {
-	slowdeath("<b>Der eingegebene URL '$url' wird von diesem Programm nich akzeptiert!</b>");
+	slowdeath("<b>Der eingegebene URL ist problematisch!</b>");
     }
     # Precompile RegEx to speed up program     
     $regex_url = qr($base_url);
@@ -46,21 +48,26 @@ sub comment {
 
 sub start {
     my ($self, $tag, $attr, $attrseq, $origtext) = @_;
-    # Expand relative to full url, ignore object tag
-    # Does not yet work properly
+    # Expand relative to full url. Prepend $new_query to
+    # webpage links, i.e. <a href="...">, so that linked pages
+    # will be berlinified as well.
+    # Applet and Object tags are currently ignored. 
+    # Does not yet work properly with all imaginable URLs
     unless ($tag eq 'a' || $tag eq 'img' || $tag eq 'link') {
 	$berlinified .= $origtext;
 	return;
     }
     if (defined($attr->{'href'})) {
 	if ($attr->{'href'} !~ /^\s*http|^\s*mailto|$regex_url/) {
-	    $attr->{'href'} =~ s|^\s*(?:\.{0,2}/)*(.*)$|$base_url$1|;
-	    $berlinified .= "<$tag ";
-	    for(@$attrseq) {
-		$berlinified .= $_ . qq(="$attr->{$_}" );
-	    }
-	    $berlinified .= ">";
+	    $attr->{'href'} =~ s|^\s*(?:\.{0,2}/)*(.*)$|$new_query$base_url$1|;
+	} else {
+	    $attr->{'href'} = $new_query . $attr->{'href'}
 	}
+	$berlinified .= "<$tag ";
+	for(@$attrseq) {
+	    $berlinified .= $_ . qq(="$attr->{$_}" );
+	}
+	$berlinified .= ">";
     } elsif (defined($attr->{'src'})) {
 	if ($attr->{'src'} !~ /^\s*http|$regex_url/) {
 	    $attr->{'src'} =~ s|^\s*(?:\.{0,2}/)*(.*)$|$base_url$1|;
