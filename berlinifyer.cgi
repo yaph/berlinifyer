@@ -105,6 +105,7 @@ if ($q->param()) {
     my $doc = get $url;
     $p->parse($doc);
     $p->eof(); # Clear buffer
+    print $q->header();
     print $berlinified;
 }
 else {
