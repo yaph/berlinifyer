@@ -3,6 +3,7 @@
 use strict;
 use URI; # for absolutizing urls
 use CGI qw(-no_xhtml); # output HTML
+use Carp;
 
 # Clean up environment for taint mode before calling external applications
 BEGIN {
@@ -16,10 +17,15 @@ $CGI::DISABLE_UPLOADS = 1;  # no uploads
 
 # Globals
 my $berlinified = undef; # String, where CGI-output is saved
-# Adjust the following path to your server settings
+# Adjust the following url to your server settings
 my $new_query = "http://localhost/cgi-bin/berlinifyer.cgi?url=";
 my $outfile = undef;
 my $q = new CGI; # cgi object
+
+# locale settings for \w matching ü,ö,ä
+use locale;
+use POSIX 'locale_h';
+setlocale(LC_CTYPE, 'de_DE') or croak "Invalid locale";
 
 if ($q->param()) {
     my $url = $q->param('url');
@@ -54,13 +60,8 @@ if ($q->param()) {
 	# handle scripts
 	if ($tag eq 'script') {
 	    if ( defined($attr->{'src'}) ) { # external
-		my $abs_url = URI->new_abs($attr->{'src'}, $p->{base});
-		$attr->{'src'} =~ s|$attr->{'src'}|$abs_url|;
-		$berlinified .= "<$tag ";
-		for(@$attrseq) {
-		    $berlinified .= $_ . qq(="$attr->{$_}" );
-		}
-		$berlinified .= ">";
+		$attr->{'src'} = URI->new_abs($attr->{'src'}, $p->{base});
+		$berlinified .= "<$tag " . join (" ", map( $_ . qq(="$attr->{$_}"), @$attrseq)) . ">";
 	    } else { # internal
 		$self->{lasttag} = 1;
 		$berlinified .= $origtext;
@@ -68,37 +69,34 @@ if ($q->param()) {
 	    }
 	} 
 	
+	# handle frames
+	if ($tag eq 'frame') {
+	    if (defined($attr->{'src'})) {
+		$attr->{'src'} = $new_query . URI->new_abs($attr->{'src'}, $p->{base});
+		$berlinified .= "<$tag " . join (" ", map( $_ . qq(="$attr->{$_}"), @$attrseq)) . ">";
+		return;
+	    }
+	}
+
 	# handle external style sheets
 	if ($tag eq 'link') {
 	    if (defined($attr->{'href'})) {
-		my $abs_url = URI->new_abs($attr->{'href'}, $p->{base});
-		$attr->{'href'} =~ s|$attr->{'href'}|$abs_url|;
-		$berlinified .= "<$tag ";
-		for(@$attrseq) {
-		    $berlinified .= $_ . qq(="$attr->{$_}" );
-		}
-		$berlinified .= ">";
+		$attr->{'href'} = URI->new_abs($attr->{'href'}, $p->{base});
+		$berlinified .= "<$tag " . join (" ", map( $_ . qq(="$attr->{$_}"), @$attrseq)) . ">";
 		return;
 	    }
 	}
 	
 	# handle links, images 
-	if ($tag eq 'a' || $tag eq 'img') {
-	    if (defined($attr->{'href'})) {
-		my $abs_url = URI->new_abs($attr->{'href'}, $p->{base});
-		my $new_url = $new_query . $abs_url;
-		$attr->{'href'} =~ s|$attr->{'href'}|$new_url|;
+	if ($tag eq 'a' || $tag eq 'img' || $tag eq 'area') {
+	    if ( defined($attr->{'href'}) && $attr->{'href'} !~ /^\s*mailto/ ) { # skip links to email addresses
+		$attr->{'href'} = $new_query . URI->new_abs($attr->{'href'}, $p->{base});		    
 	    } elsif (defined($attr->{'src'})) {
-		my $abs_url = URI->new_abs($attr->{'src'}, $p->{base});
-		$attr->{'src'} =~ s|$attr->{'src'}|$abs_url|;
+		$attr->{'src'} = URI->new_abs($attr->{'src'}, $p->{base});
 	    }
-	    $berlinified .= "<$tag ";
-	    for(@$attrseq) {
-		$berlinified .= $_ . qq(="$attr->{$_}" );
-	    }
-	    $berlinified .= ">";
+	    $berlinified .= "<$tag " . join (" ", map( $_ . qq(="$attr->{$_}"), @$attrseq)) . ">";
 	    return;
-	} # if ($tag eq 'a' || $tag eq 'img')
+	} # if ($tag eq 'a' || $tag eq 'img' || $tag eq 'area')
 	
         # all other tags
 	else {
@@ -113,8 +111,7 @@ if ($q->param()) {
 	    $berlinified .= $text;
 	    return;
 	}
-	$text = substitute($text);
-	$berlinified .= $text;
+	$berlinified .= substitute($text);
     }
 
     sub end {
@@ -143,7 +140,9 @@ if ($q->param()) {
     print $q->header();
     print $berlinified;
 } # if ($q->param())
-else { # print HTML form
+
+# print HTML form
+else {
     my $title = 'Berlinifyer';
     print $q->header(),$q->start_html( {'title'=>$title,'author'=>'Ramiro G&oacute;mez'} );
     print $q->p('Hier k&ouml;nnen Web-Dokumente ins Berlinische übersetzt werden. Bitte geben Sie die Internetadresse, des zu übersetzenden HTML-Dokuments an.'),
@@ -174,6 +173,8 @@ sub substitute {
 		       'Freundin' => 'Ficke',
 		       'Geld' => 'Patte',
 		       'Gesellschaft' => 'Blase',
+		       'Herz' => 'Cognacpumpe',
+		       'Herzen' => 'Cognacpumpen',
 		       'Hitze' => 'Affenhitze',
 		       'Ich' => 'Ick',
 		       'ich' => 'ick',
@@ -183,6 +184,10 @@ sub substitute {
 		       'in die' => 'inne',
 		       'Kind' => 'Ableja',
 		       'Kinder' => 'Ableja',
+		       'Kneipe' => 'Destille',
+		       'Kneipen' => 'Destillen',
+		       'Lokal' => 'Destille',
+		       'Lokale' => 'Destillen',
 		       'Nein' => 'Nee',
 		       'nein' => 'nee',
 		       'Mutter' => 'Olle',
@@ -196,7 +201,9 @@ sub substitute {
 		       'Vater' => 'Oller',
 		       'Verwandtschaft' => 'Blase',
 		       'Was' => 'Wat',
-		       'was' => 'wat');
+		       'was' => 'wat',
+		       'Wirtshaus' => 'Destille',
+		       'Wirtshäuser' => 'Destillen');
 	
     for(keys %subst_words) {$line =~ s/(\b)$_(\b)/$1$subst_words{$_}$2/g;}
     $line =~ s|(\b)Auf|$1Uff|g;
@@ -214,10 +221,9 @@ sub slowdeath {
     my $message = shift;
     print $q->header(),
     $q->start_html(-title=>"Fehler"),
-    $q->p($message), $q->end_html;
+    $q->p($message), $q->end_html();
     exit(1);
 }
 __END__
 #### Todo ####
-Frames
-Berlinisch Lexikon c-d
+Berlinisch Lexikon e-z
