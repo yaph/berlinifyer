@@ -41,7 +41,6 @@ sub substitute {
 }
 
 use CGI qw(-no_xhtml);
-my $q = new CGI;
 
 my $rahoo_url = 'http://www.rahoo.de/';
 my $css_url = $rahoo_url.'style/rahoostyle.css';
@@ -53,6 +52,8 @@ $CGI::POST_MAX=1024*100;  # max 100 KBytes posts
 $CGI::DISABLE_UPLOADS = 1;  # no uploads
 $ENV{'PATH'} = '/bin:/usr/bin';
 delete @ENV{'IFS','CDPATH','ENV','BASH_ENV'};
+
+my $q = new CGI;
 
 if ($q->param()) {
     my $url = $q->param('url');
