@@ -8,7 +8,7 @@
 use strict;
 
 # If you need to specify additional paths to perl modules, do it here, e.g.:
-# use lib qw(/home/pub/lib/perl5/site_perl/5.6.1);
+use lib qw(/home/pub/lib/perl5/site_perl/5.6.1);
 use URI; # for absolutizing urls
 use CGI qw(-no_xhtml); # output HTML
 use Carp;
@@ -181,14 +181,13 @@ sub substitute {
 		       'Flaschen' => 'Pullen',
 		       'Frau' => 'Butze',
 		       'Frauen' => 'Butzen',
-		       'Freundin' => 'Ficke',
 		       'Frisur' => 'Fettpeitsche',
 		       'Füße' => 'Quanten',
 		       'Gesellschaft' => 'Blase',
 		       'Gesichter' => 'Fratzen',
 		       'Hand' => 'Pfote',
 		       'Hände' => 'Wichsgriffel',
-		       'Harre' => 'Peden',
+		       'Haare' => 'Peden',
 		       'Herzen' => 'Cognacpumpen',
 		       'Hitze' => 'Affenhitze',
 		       'Hund' => 'Köter',
