@@ -2,46 +2,56 @@
 # Translate webpages to the dialect spoken in Berlin, Germany
 # NAVBAR muss noch eingebaut werden auch in slowdeath
 use strict;
-use CGI qw(-no_xhtml);
-my $q = new CGI;
-my $url = undef;
-my $berlinified = undef; # String, where CGI-output is saved
-
 {
     ##### Package Berlinifyer start #####
     package Berlinifyer;
     use base "HTML::Parser";
-    use LWP::Simple;
-
+   
+    my $berlinified = undef; # String, where CGI-output is saved
     my $new_query = "http://user.cs.tu-berlin.de/~ramiro/cgi-bin/berlinifyer.cgi?url=";
 
-    # Security measures
-    $CGI::POST_MAX=1024*100;  # max 100 KBytes posts
-    $CGI::DISABLE_UPLOADS = 1;  # no uploads
-    $ENV{'PATH'} = '/bin:/usr/bin';
-    delete @ENV{'IFS','CDPATH','ENV','BASH_ENV'};
-
-    # Get user input
-    my ($base_url,$regex_url) = undef; # must be global to be used in tha package's methods
-    if ($q->param()) {
-	$url = $q->param('url');
-	unless (($url =~ m|^(http://[\w.\@/~,\?&%\+=:-]+)$|i) && (length($url) > 11)) {
-	    slowdeath("<b>Der eingegebene URL wird von diesem Programm nich akzeptiert!</b>");
-	}
-	$url = $1; # untainted
-	
-	# Enable conversion of relative to full urls
-	if ($url =~ m{^(.*/)\w+\.\w+\s*$}) { # e.g. (.*/)index.html
-	    $base_url = $1;
-	} elsif ($url =~ m{^(http://.*?)/?\s*$}) {
-	    $base_url = $1.'/'; # append / after hostname
-	} else {
-	    slowdeath("<b>Der eingegebene URL ist problematisch!</b>");
-	}
-	# Precompile RegEx to speed up program     
-	$regex_url = qr($base_url);
+    my ($regex_url,$base_url) = undef;
+    sub set_urls {
+	my $self = shift;
+	($regex_url, $base_url) = @_;
     }
 
+    # return berlinified
+    sub get_berlinified { return $berlinified; }
+
+    # substitute words and letters
+    sub substitute {
+	my $vowel = 'aeiouäöü';
+	my $line = shift;
+	my %subst_words = ('An der' => 'Anna',
+			   'an der' => 'anna',
+			   'An die' => 'Anne',
+			   'an die' => 'anne',
+			   'Auch' => 'Och',
+			   'auch' => 'och',
+			   'Auf' => 'Uff',
+			   'auf' => 'uff',
+			   'Du' => 'De',
+			   'du' => 'de',
+			   'Ich' => 'Ick',
+			   'ich' => 'ick',
+			   'In der' => 'Inna',
+			   'in der' => 'inna',
+			   'In die' => 'Inne',
+			   'in die' => 'inne',
+			   'Was' => 'Wat',
+			   'was' => 'wat');
+	
+	for(keys %subst_words) {$line =~ s/(\b)$_(\b)/$1$subst_words{$_}$2/g;}
+	$line =~ s^ei(\w)^ee$1^g;
+	$line =~ s|(\w{2,})er([^$vowel])|$1a$2|g;
+	$line =~ s|([$vowel])r([^$vowel])|$1a$2|g;
+	$line =~ s|([^n])g([r$vowel])|$1j$2|g;
+	$line =~ s/([^$vowel][^n])g(\b)/$1ch$2/g;
+	return $line;
+    }
+
+    # Event handlers
     sub comment {
 	my ($self, $comment) = @_;
 	$berlinified .= "<!-- $comment -->";
@@ -91,24 +101,55 @@ my $berlinified = undef; # String, where CGI-output is saved
 	my ($self, $tag, $origtext) = @_;
 	$berlinified .= $origtext;
     }
-    ##### Package Berlinifyer end #####
 }
+##### Package Berlinifyer end #####
 
-##### Main program start #####
-# Variables
+use CGI qw(-no_xhtml);
+my $q = new CGI;
+my $url = undef;
+
 my $rahoo_url = 'http://www.rahoo.de/';
 my $css_url = $rahoo_url.'style/rahoostyle.css';
 my $cgi_url = 'http://user.cs.tu-berlin.de/~ramiro/cgi-bin/berlinifyer.cgi';
 my $outfile = undef;
-my $vowel = 'aeiouäöü';
+
+# Security measures
+$CGI::POST_MAX=1024*100;  # max 100 KBytes posts
+$CGI::DISABLE_UPLOADS = 1;  # no uploads
+$ENV{'PATH'} = '/bin:/usr/bin';
+delete @ENV{'IFS','CDPATH','ENV','BASH_ENV'};
 
 if ($q->param()) {
-    my $p = new Berlinifyer;
+    my ($base_url,$regex_url) = undef;
+    $url = $q->param('url');
+    unless (($url =~ m|^(http://[\w.\@/~,\?&%\+=:-]+)$|i) && (length($url) > 11)) {
+	slowdeath("<b>Der eingegebene URL wird von diesem Programm nich akzeptiert!</b>");
+    }
+    $url = $1; # untainted
+	
+    # Enable conversion of relative to full urls
+    if ($url =~ m{^(.*/)\w+\.\w+\s*$}) { # e.g. (.*/)index.html
+	$base_url = $1;
+    } elsif ($url =~ m{^(http://.*?)/?\s*$}) {
+	$base_url = $1.'/'; # append / after hostname
+    } else {
+	slowdeath("<b>Der eingegebene URL ist problematisch!</b>");
+    }
+    # Precompile RegEx to speed up program     
+    $regex_url = qr($base_url);
+	     
+    # Get user document 
+    use LWP::Simple;
     my $doc = get $url;
+    
+    # Instantiate Berlinifyer Object
+    my $p = new Berlinifyer;
+    $p->set_urls($regex_url,$base_url);
     $p->parse($doc);
     $p->eof(); # Clear buffer
+
     print $q->header();
-    print $berlinified;
+    print $p->get_berlinified();
 }
 else {
     my $title = 'Rahoo - Berlinifyer';
@@ -119,40 +160,6 @@ else {
 				    'maxlength'=>'100',
 				    'default'=>'http://'}),$q->submit(),
     $q->end_form(),$q->end_html();
-}
-##### Main program end #####
-
-##### Subroutines start ######
-# translate to Berlinisch
-# NOT YET PERFECT !!!!!!!!!!!!!!!!
-sub substitute {
-    my $line = shift;
-    my %subst_words = ('An der' => 'Anna',
-		       'an der' => 'anna',
-		       'An die' => 'Anne',
-		       'an die' => 'anne',
-		       'Auch' => 'Och',
-		       'auch' => 'och',
-		       'Auf' => 'Uff',
-		       'auf' => 'uff',
-		       'Du' => 'De',
-		       'du' => 'de',
-		       'Ich' => 'Ick',
-		       'ich' => 'ick',
-		       'In der' => 'Inna',
-		       'in der' => 'inna',
-		       'In die' => 'Inne',
-		       'in die' => 'inne',
-		       'Was' => 'Wat',
-		       'was' => 'wat');
-
-    for(keys %subst_words) {$line =~ s/(\b)$_(\b)/$1$subst_words{$_}$2/g;}
-    $line =~ s^ei(\w)^ee$1^g;
-    $line =~ s|(\w{2,})er([^$vowel])|$1a$2|g;
-    $line =~ s|([$vowel])r([^$vowel])|$1a$2|g;
-    $line =~ s|([^n])g([r$vowel])|$1j$2|g;
-    $line =~ s/([^$vowel][^n])g(\b)/$1ch$2/g;
-    return $line;
 }
 
 # Handle incorrect input
@@ -167,3 +174,6 @@ sub slowdeath {
     exit(1);
 }
 __END__
+#### Todo list ####
+Frames
+use URI::URL ...
