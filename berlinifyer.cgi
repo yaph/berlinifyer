@@ -64,7 +64,7 @@ use strict;
 	# will be berlinified as well.
 	# Applet and Object tags are currently ignored. 
 	# Does not yet work properly with all imaginable URLs
-	unless ($tag eq 'a' || $tag eq 'img' || $tag eq 'link') {
+	unless ($tag eq 'a' || $tag eq 'img' || $tag eq 'link' || $tag eq 'script') {
 	    $berlinified .= $origtext;
 	    return;
 	}
