@@ -1,41 +1,58 @@
 #!/usr/bin/perl -wT
-# This cgi-script translates webpages to the dialect spoken in Berlin, Germany.
+# $Id: berlinifyer.cgi,v 1.13 2005/04/19 22:15:22 ramirogomez Exp $
 #
-# Copyright (C) 2002-2003 Ramiro Gómez <ramiro@rahoo.de>
+# This cgi script translates web pages to
+# the dialect spoken in Berlin, Germany.
+#
+# Copyright (C) 2002-2005 Ramiro Gómez 
+# e-mail: web@ramiro.org
+# url: www.ramiro.org
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 use strict;
 
-# If you need to specify additional paths to perl modules, do it here, e.g.:
-use lib qw(/home/pub/lib/perl5/site_perl/5.6.1);
-use URI; # for absolutizing urls
+# If you need to specify additional paths to perl modules,
+# do it here, e.g.:
+# use lib qw(/home/pub/lib/perl5/site_perl/5.6.1);
+use URI;
 use CGI qw(-no_xhtml); # output HTML
 use Carp;
 
-# Security measures
-$CGI::POST_MAX=1024*100;  # max 100 KBytes posts
-$CGI::DISABLE_UPLOADS = 1;  # no uploads
+# limit the size of posted data
+$CGI::POST_MAX = 1024 * 100;
 
-# Globals
-my $berlinified = undef; # String, where CGI-output is saved
-my $outfile = undef;
-my $q = new CGI; # cgi object
-my $new_query = $q->script_name() . '?url='; # prepend to links to berlinify the whole www
+# disable CGI's upload function
+$CGI::DISABLE_UPLOADS = 1;
 
-# locale settings for \w matching ü,ö,ä
+# maximum size for a page to be berlinified 
+use constant MAX_PAGE_SIZE => 1024 * 300;
+
+# string where CGI-output is saved
+my $berlinified = undef;
+
+# new CGI object
+my $q = CGI->new;
+
+# prepend to links to berlinify the whole www
+my $new_query = $q->script_name() . '?url='; 
+
+# locale settings for pattern matching (ü,ö,ä)
 use locale;
 use POSIX 'locale_h';
 setlocale(LC_CTYPE, 'de_DE') or croak "Invalid locale";
 
+print $q->header();
+
 if ($q->param()) {
     my $url = $q->param('url');
-    unless ( ($url =~ m|^((?:[^:/?#]+:)?(?://[^/?#]*)?[^?#]*(?:\?[^#]*)?(?:#.*)?)| )  && (length($url) > 11) ) {
-	slowdeath("Der eingegebene URL '$url' wird von diesem Programm nich akzeptiert!");
+    unless ( ($url =~ m|^((?:[^:/?#]+:)?(?://[^/?#]*)?[^?#]*(?:\?[^#]*)?(?:#.*)?)| )  
+			      && (length($url) > 11) ) {
+	error("Der eingegebene URL '$url' wird 
+von diesem Programm nicht akzeptiert!");
     }
     $url = $1; # untainted
 
-    # Create parser object
     use HTML::Parser;
     my $p = HTML::Parser->new( api_version => 3,
 			       start_h => [\&start, "self, tag, attr, attrseq, text"],
@@ -43,7 +60,7 @@ if ($q->param()) {
 			       end_h   => [\&end, "self, tag, text"]
 			       #comment_h => [""],
 			       );
-    # Event handlers for HTML parser
+    # event handlers for HTML parser
     sub start {
 	my ($self, $tag, $attr, $attrseq, $origtext) = @_;
 	# Expand relative to full urls. Prepend $new_query to
@@ -90,16 +107,16 @@ if ($q->param()) {
 	
 	# handle links, images 
 	if ($tag eq 'a' || $tag eq 'img' || $tag eq 'area') {
-	    if ( defined($attr->{'href'}) && $attr->{'href'} !~ /^\s*mailto/ ) { # skip links to email addresses
+	    if ( defined($attr->{'href'}) && $attr->{'href'} !~ /^\s*mailto/ ) { # skip e-mail addresses
 		$attr->{'href'} = $new_query . URI->new_abs($attr->{'href'}, $p->{base});		    
 	    } elsif (defined($attr->{'src'})) {
 		$attr->{'src'} = URI->new_abs($attr->{'src'}, $p->{base});
 	    }
 	    $berlinified .= "<$tag " . join (" ", map( $_ . qq(="$attr->{$_}"), @$attrseq)) . ">";
 	    return;
-	} # if ($tag eq 'a' || $tag eq 'img' || $tag eq 'area')
+	}
 	
-        # all other tags
+        # all other elements
 	else {
 	    $berlinified .= $origtext;
 	    return;
@@ -123,30 +140,34 @@ if ($q->param()) {
 	}
     }
 
-    # Get document and base url
+    # get document and base url
     use LWP;
-    my $doc;
     my $ua = LWP::UserAgent->new();
     my $request = HTTP::Request->new(GET => $url);
     my $response = $ua->request($request);
     if ($response->is_success) {
-	$p->{base} = $response->base();
-	$doc = $response->content();
-    } else { slowdeath("Das Dokument '$url' konnte nicht heruntergeladen werden!"); }
-    
-    # Parse HTML
-    $p->parse($doc);
-    $p->eof(); # Clear buffer
-
-    print $q->header();
-    print $berlinified;
+	$p->{base} = $response->base;
+	
+	if ( length( $response->content > MAX_PAGE_SIZE ) ) {
+	    error("Das Dokument '$url' wird aufgrund der 
+Gr&ouml;&szlig;enbegrenzung nicht verarbeitet!");
+	} else {
+	    # parse HTML
+	    $p->parse($response->content);
+	    $p->eof();
+	    print $berlinified;
+	}
+    } else { 
+	error("Das Dokument '$url' konnte nicht heruntergeladen werden!"); 
+    }
 } # if ($q->param())
 
 # print HTML form
 else {
     my $title = 'Berlinifyer';
-    print $q->header(),$q->start_html( {'title'=>$title,'author'=>'Ramiro G&oacute;mez'} );
-    print $q->p('Hier k&ouml;nnen Web-Dokumente ins Berlinische übersetzt werden. Bitte geben Sie die Internetadresse, des zu übersetzenden HTML-Dokuments an.'),
+    print $q->start_html( {'title'=>$title,'author'=>'Ramiro G&oacute;mez'} );
+    print $q->p('Hier k&ouml;nnen Web-Dokumente ins Berlinische &uuml;bersetzt werden. 
+Geben Sie die Internetadresse des zu &uuml;bersetzenden HTML-Dokuments an.'),
     $q->start_form({'method'=>'get'}),$q->textfield({'name'=>'url',
 				    'size'=>'50',
 				    'maxlength'=>'100',
@@ -187,7 +208,7 @@ sub substitute {
 		       'Gesichter' => 'Fratzen',
 		       'Hand' => 'Pfote',
 		       'Hände' => 'Wichsgriffel',
-		       'Haare' => 'Peden',
+		       'Harre' => 'Peden',
 		       'Herzen' => 'Cognacpumpen',
 		       'Hitze' => 'Affenhitze',
 		       'Hund' => 'Köter',
@@ -241,11 +262,10 @@ sub substitute {
     return $line;
 }
 
-# Handle incorrect input
-sub slowdeath {
+# print error message
+sub error {
     my $message = shift;
-    print $q->header(),
-    $q->start_html(-title=>"Fehler"),
+    print $q->start_html(-title=>"Fehler"),
     $q->p($message), $q->end_html();
     exit(1);
 }
