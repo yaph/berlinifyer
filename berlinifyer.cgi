@@ -1,5 +1,5 @@
 #!/usr/bin/perl -wT
-# $Id: berlinifyer.cgi,v 1.13 2005/04/19 22:15:22 ramirogomez Exp $
+# $Id: berlinifyer.cgi,v 1.14 2005/06/02 19:38:08 ramirogomez Exp $
 #
 # This cgi script translates web pages to
 # the dialect spoken in Berlin, Germany.
@@ -175,14 +175,14 @@ Geben Sie die Internetadresse des zu &uuml;bersetzenden HTML-Dokuments an.'),
     $q->end_form(),$q->end_html();
 }
 
-# "translate" to Berlin's dialect 
+# translate to Berlin's dialect 
 sub substitute {
     my $line = shift;
     my $vowel = 'aeiouäöü';
     #my $consonant = 'bcdfghjklmnpqrstvwxyz';
     
-    # translate only the plural form of a word, if its case 
-    # differs from the case of the translation 
+    # translate only the plural form of words, where 
+    # grammatical gender of source and target differ 
     my %subst_words = ('An der' => 'Anna',
 		       'an der' => 'anna',
 		       'An die' => 'Anne',
@@ -190,6 +190,8 @@ sub substitute {
 		       'Auch' => 'Och',
 		       'auch' => 'och',
 		       'Bäuche' => 'Plautzen',
+		       'Babys' => 'Murkel',
+		       'Babies' => 'Murkel',
 		       'Beamten' => 'Stubenpisser',
 		       'Beamter' => 'Stubenpisser',
 		       'Beine' => 'Kackstelzen',
@@ -208,7 +210,7 @@ sub substitute {
 		       'Gesichter' => 'Fratzen',
 		       'Hand' => 'Pfote',
 		       'Hände' => 'Wichsgriffel',
-		       'Harre' => 'Peden',
+		       'Haare' => 'Peden',
 		       'Herzen' => 'Cognacpumpen',
 		       'Hitze' => 'Affenhitze',
 		       'Hund' => 'Köter',
@@ -219,7 +221,7 @@ sub substitute {
 		       'in der' => 'inna',
 		       'In die' => 'Inne',
 		       'in die' => 'inne',
-		       'Kinder' => 'Ableja',
+		       'Kinder' => 'Ableger',
 		       'Kleidung' => 'Klamotten',
 		       'Kneipe' => 'Destille',
 		       'Kneipen' => 'Destillen',
@@ -238,6 +240,11 @@ sub substitute {
 		       'Rollstühle' => 'AOK-Choppa',
 		       'Schwester' => 'Atze',
 		       'Schwestern' => 'Atzen',
+		       'sehe' => 'glotze',
+		       'siehst' => 'glotzt',
+		       'sieht' => 'glotzt',
+		       'sehen' => 'glotzen',
+		       'seht' => 'glotzt',
 		       'Vater' => 'Oller',
 		       'Verwandtschaft' => 'Blase',
 		       'Was' => 'Wat',
