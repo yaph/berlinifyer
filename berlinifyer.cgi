@@ -1,5 +1,5 @@
 ﻿#!/usr/bin/perl -wT
-# $Id: berlinifyer.cgi,v 1.15 2008/02/01 00:54:56 ramirogomez Exp $
+#$Id: berlinifyer.cgi,v 1.16 2008/02/04 23:27:06 ramirogomez Exp $
 #
 # This cgi script translates web pages to
 # the dialect spoken in Berlin, Germany.
@@ -11,21 +11,6 @@
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 use strict;
-
-# If you need to specify additional paths to perl modules,
-# do it here, e.g.:
-# BEGIN {
-  # my $homedir = (getpwuid($>))[7];
-  # my $n_inc = scalar @INC;
-  # for (my $i = 0; $i < $n_inc; $i++ ) {
-    # if (-d $homedir . '/perl' . $INC[$i]) {
-      # unshift(@INC,$homedir . '/perl' . $INC[$i]);
-      # $n_inc++;
-      # $i++;
-    # }
-  # }
-# }
-# use Unicode::String qw(utf8 latin1 utf16);
 use URI;
 use CGI qw(-no_xhtml); # output HTML
 use CGI::Carp qw(fatalsToBrowser);
@@ -52,9 +37,9 @@ my $new_query = $0 . '?url=';
 my $p;
 
 # locale settings for pattern matching
-use locale;
-use POSIX 'locale_h';
-setlocale(LC_CTYPE, 'de_DE') or croak "Invalid locale";
+#use locale;
+#use POSIX 'locale_h';
+#setlocale(LC_CTYPE, 'de_DE') or croak "Invalid locale";
 
 print $q->header();
 
