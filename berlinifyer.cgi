@@ -1,5 +1,5 @@
 ﻿#!/usr/bin/perl -wT
-#$Id: berlinifyer.cgi,v 1.16 2008/02/04 23:27:06 ramirogomez Exp $
+#$Id: berlinifyer.cgi,v 1.17 2008/02/13 13:53:35 ramirogomez Exp $
 #
 # This cgi script translates web pages to
 # the dialect spoken in Berlin, Germany.
@@ -37,11 +37,11 @@ my $new_query = $0 . '?url=';
 my $p;
 
 # locale settings for pattern matching
-#use locale;
-#use POSIX 'locale_h';
-#setlocale(LC_CTYPE, 'de_DE') or croak "Invalid locale";
+use locale;
+use POSIX 'locale_h';
+setlocale(LC_CTYPE, 'de_DE') or croak "Invalid locale";
 
-print $q->header();
+print "Content-type: text/html\n\n";
 
 if ($q->param()) {
   my $url = $q->param('url');
@@ -69,6 +69,7 @@ if ($q->param()) {
       error("Das Dokument '$url' wird aufgrund der Gr&ouml;&szlig;enbegrenzung nicht verarbeitet!");
     } else {
       # parse HTML
+      $p->utf8_mode(1);
       $p->parse($response->content);
       $p->eof();
       print $berlinified;
@@ -80,8 +81,8 @@ if ($q->param()) {
 
 # print HTML form
 else {
-  my $title = 'Berlinifyer';
-  print $q->start_html( {'title'=>$title,'author'=>'Ramiro Gomez'} ), $q->p('Hier k&ouml;nnen Web-Dokumente ins Berlinische &uuml;bersetzt werden. Geben Sie die Internetadresse des zu &uuml;bersetzenden HTML-Dokuments an.'),$q->start_form({'method'=>'get'}),$q->textfield({'name'=>'url','size'=>'50','maxlength'=>'100','default'=>'http://'}),$q->submit(),$q->end_form(),$q->end_html();
+  my $title = 'Berlinifyer - Das Web auf Berlinisch';
+  print $q->start_html( {'title'=>$title,'author'=>'Ramiro Gomez'} ), $q->h1($title), $q->p('Hier k&ouml;nnen Web-Dokumente ins Berlinische &uuml;bersetzt werden. Geben Sie die Internetadresse des zu &uuml;bersetzenden HTML-Dokuments an.'),$q->start_form({'method'=>'get'}),$q->textfield({'name'=>'url','size'=>'50','maxlength'=>'100','default'=>'http://'}),$q->submit({'value'=>'Ab jeht die Post!'}),$q->end_form(),$q->end_html();
 }
 
 # translate to Berlin's dialect 
