@@ -1,5 +1,5 @@
-﻿#!/usr/bin/perl -wT
-#$Id: berlinifyer.cgi,v 1.17 2008/02/13 13:53:35 ramirogomez Exp $
+#!/usr/bin/perl -T
+#$Id: berlinifyer.cgi,v 1.18 2010/05/17 21:16:31 ramirogomez Exp $
 #
 # This cgi script translates web pages to
 # the dialect spoken in Berlin, Germany.
@@ -11,6 +11,7 @@
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 use strict;
+use warnings;
 use URI;
 use CGI qw(-no_xhtml); # output HTML
 use CGI::Carp qw(fatalsToBrowser);
@@ -35,11 +36,6 @@ my $new_query = $0 . '?url=';
 
 # parser
 my $p;
-
-# locale settings for pattern matching
-use locale;
-use POSIX 'locale_h';
-setlocale(LC_CTYPE, 'de_DE') or croak "Invalid locale";
 
 print "Content-type: text/html\n\n";
 
@@ -164,17 +160,17 @@ sub substitute {
     'Zigaretten' => 'Zippen');
 
     # substitute all keys of %subst_words with the corresponding values
-    map ($line =~ s/(\b)$_(\b)/$1$subst_words{$_}$2/g, keys %subst_words);
+    map ($line =~ s/\b$_\b/$subst_words{$_}/g, keys %subst_words);
     
-    $line =~ s|(\b)Auf|$1Uff|g;
-    $line =~ s|(\b)auf|$1uff|g;
+    $line =~ s|\bAuf|Uff|g;
+    $line =~ s|\bauf|uff|g;
     $line =~ s|(\w{2,})er([^$vowel])|$1a$2|g;
     $line =~ s|([$vowel])r([^$vowel])|$1a$2|g;
-    $line =~ s|([$vowel])hr(\b)|$1a$2|g;
+    $line =~ s|([$vowel])hr\b|$1a|g;
     $line =~ s|([^n])g([r$vowel])|$1j$2|g;
-    $line =~ s/([^$vowel][^n])g(\b)/$1ch$2/g;
-    $line =~ s|(\b)g([^l])|$1j$2|g;
-    $line =~ s|(\b)G([^l])|$1J$2|g;
+    $line =~ s/([^$vowel][^n])g\b/$1ch/g;
+    $line =~ s|\bg([^l])|j$1|g;
+    $line =~ s|\bG([^l])|J$1|g;
     
     return $line;
 }
