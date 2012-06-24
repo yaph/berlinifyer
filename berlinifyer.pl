@@ -1,12 +1,8 @@
 #!/usr/bin/perl -T
-#$Id: berlinifyer.cgi,v 1.18 2010/05/17 21:16:31 ramirogomez Exp $
 #
-# This cgi script translates web pages to
-# the dialect spoken in Berlin, Germany.
+# This cgi script translates web pages to the dialect spoken in Berlin, Germany.
 #
-# Copyright (C) 2002-2008 Ramiro Gomez
-# e-mail: web@ramiro.org
-# url: www.ramiro.org
+# Copyright (C) 2002-2012 Ramiro Gomez www.ramiro.org
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
